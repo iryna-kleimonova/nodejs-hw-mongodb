@@ -1,6 +1,7 @@
 import { SORT_ORDER } from '../constants/index.js';
 import { ContactsCollection } from '../db/models/contact.js';
 import { calculatePaginationData } from '../utils/calculatePaginationData.js';
+import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 
 export const getAllContacts = async ({
   page = 1,
@@ -44,8 +45,18 @@ export const getContactById = async (contactId, userId) => {
   return contact;
 };
 
-export const createContact = async (payload) => {
-  const contact = await ContactsCollection.create(payload);
+export const createContact = async (payload, photo) => {
+  let photoUrl = null;
+
+  if (photo) {
+    photoUrl = await saveFileToCloudinary(photo);
+  }
+
+  const contact = await ContactsCollection.create({
+    ...payload,
+    photo: photoUrl,
+  });
+
   return contact;
 };
 
@@ -62,11 +73,19 @@ export const updateContact = async (
   contactId,
   payload,
   userId,
+  photo,
   options = {},
 ) => {
+  const updateData = { ...payload };
+
+  if (photo) {
+    const photoUrl = await saveFileToCloudinary(photo);
+    updateData.photo = photoUrl;
+  }
+
   const rawResult = await ContactsCollection.findOneAndUpdate(
     { _id: contactId, userId },
-    payload,
+    updateData,
     {
       new: true,
       includeResultMetadata: true,
